@@ -1,11 +1,15 @@
 {
-  "name": "@coti/hw-sdk",
-  "version": "0.1.0",
-  "description": "COTI Ledger app client SDK",
-  "private": true,
+  "name": "@coti-io/ledger-sdk",
+  "version": "0.1.0-beta.0",
+  "description": "COTI Ledger app SDK",
   "main": "src/index.js",
   "dependencies": {
     "@ledgerhq/hw-transport": "^5.21.0",
     "bip32-path": "^0.4.2"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coti-io/coti-ledger-sdk"
   }
 }
