@@ -1,0 +1,6 @@
+.idea
+.vscode
+*.iml
+.eslintrc
+.eslintignore
+.prettierrc
