@@ -2,9 +2,11 @@
   "name": "@coti-io/ledger-sdk",
   "version": "0.1.0-beta.0",
   "description": "COTI Ledger app SDK",
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "dependencies": {
     "@ledgerhq/hw-transport": "^5.21.0",
+    "@types/ledgerhq__hw-transport": "^4.21.3",
     "bip32-path": "^0.4.2"
   },
   "license": "Apache-2.0",
@@ -12,8 +14,17 @@
     "type": "git",
     "url": "https://github.com/coti-io/coti-ledger-sdk"
   },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "devDependencies": {
+    "@types/node": "^14.14.12",
+    "@typescript-eslint/eslint-plugin": "^3.9.1",
+    "@typescript-eslint/parser": "^3.9.1",
     "eslint": "^7.15.0",
-    "prettier": "^2.2.1"
+    "prettier": "^2.2.1",
+    "typescript": "^3.8.3"
   }
 }
