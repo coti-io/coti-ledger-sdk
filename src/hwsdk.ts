@@ -1,6 +1,17 @@
 import bippath from 'bip32-path';
 import Transport from '@ledgerhq/hw-transport';
+
 const COTI_SCRAMBLE_KEY = 'COTI';
+
+const CLA = 0xe0;
+
+const INS_GET_PUBLIC_KEY = 0x02;
+const INS_SIGN_MESSAGE = 0x04;
+
+const P1_CONFIRM = 0x01;
+const P1_UNCONFIRM = 0x00;
+const P1_FIRST = 0x00;
+const P1_MORE = 0x80;
 
 export const BIP32_PATH = "44'/6779'/0'/0";
 
@@ -26,7 +37,7 @@ export class HWSDK {
       buffer.writeUInt32BE(element, 1 + 4 * pathIndex);
     });
 
-    const response = await this.transport.send(0xe0, 0x02, interactive ? 0x01 : 0x00, 0x00, buffer);
+    const response = await this.transport.send(CLA, INS_GET_PUBLIC_KEY, interactive ? P1_CONFIRM : P1_UNCONFIRM, 0x00, buffer);
     const publicKeyLength = response[0];
     const publicKey = response.slice(1, 1 + publicKeyLength).toString('hex');
 
@@ -68,7 +79,7 @@ export class HWSDK {
     }
     let response;
     for (let i = 0; i < data.length; ++i) {
-      response = await this.transport.send(0xe0, 0x04, i === 0 ? 0x00 : 0x80, 0x00, data[i]);
+      response = await this.transport.send(CLA, INS_SIGN_MESSAGE, i === 0 ? P1_FIRST : P1_MORE, 0x00, data[i]);
     }
     if (response === undefined) throw new Error(`Undefined sign message response`);
     const v = response[0];
