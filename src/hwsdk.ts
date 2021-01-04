@@ -12,6 +12,8 @@ const P1_CONFIRM = 0x01;
 const P1_UNCONFIRM = 0x00;
 const P1_FIRST = 0x00;
 const P1_MORE = 0x80;
+const P2_HASHED = 0x01;
+const P2_NOT_HASHED = 0x00;
 
 export const BIP32_PATH = "44'/6779'/0'/0";
 
@@ -50,7 +52,7 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signMessage(index: number | undefined, messageHex: string) {
+  async signMessage(index: number | undefined, messageHex: string, hashed = true) {
     let path = BIP32_PATH;
     if (index !== undefined) {
       path = `${path}/${index}`;
@@ -79,7 +81,7 @@ export class HWSDK {
     }
     let response;
     for (let i = 0; i < data.length; ++i) {
-      response = await this.transport.send(CLA, INS_SIGN_MESSAGE, i === 0 ? P1_FIRST : P1_MORE, 0x00, data[i]);
+      response = await this.transport.send(CLA, INS_SIGN_MESSAGE, i === 0 ? P1_FIRST : P1_MORE, hashed ? P2_HASHED : P2_NOT_HASHED, data[i]);
     }
     if (response === undefined) throw new Error(`Undefined sign message response`);
     const v = response[0];
@@ -90,7 +92,7 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signUserMessage(messageHex: string) {
-    return this.signMessage(undefined, messageHex);
+  async signUserMessage(messageHex: string, hashed = true) {
+    return this.signMessage(undefined, messageHex, hashed);
   }
 }
