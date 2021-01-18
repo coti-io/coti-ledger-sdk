@@ -17,6 +17,14 @@ const P2_NOT_HASHED = 0x00;
 
 export const BIP32_PATH = "44'/6779'/0'/0";
 
+export enum SigningType {
+  MESSAGE,
+  FULL_NODE_FEE,
+  TX_TRUST_SCORE,
+  BASE_TX,
+  TX,
+}
+
 export class HWSDK {
   readonly transport: Transport;
 
@@ -52,7 +60,7 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signMessage(index: number | undefined, messageHex: string, hashed = true) {
+  async signMessage(index: number | undefined, messageHex: string, signingType = SigningType.MESSAGE, hashed = true) {
     let path = BIP32_PATH;
     if (index !== undefined) {
       path = `${path}/${index}`;
@@ -63,16 +71,17 @@ export class HWSDK {
     const data = [];
 
     while (offset !== message.length) {
-      const maxChunkSize = offset === 0 ? 150 - 1 - paths.length * 4 - 4 : 150;
+      const maxChunkSize = offset === 0 ? 150 - 2 - paths.length * 4 - 4 : 150;
       const chunkSize = offset + maxChunkSize > message.length ? message.length - offset : maxChunkSize;
-      const buffer = Buffer.alloc(offset === 0 ? 1 + paths.length * 4 + 4 + chunkSize : chunkSize);
+      const buffer = Buffer.alloc(offset === 0 ? 2 + paths.length * 4 + 4 + chunkSize : chunkSize);
       if (offset === 0) {
         buffer[0] = paths.length;
         paths.forEach((element, index) => {
           buffer.writeUInt32BE(element, 1 + 4 * index);
         });
-        buffer.writeUInt32BE(message.length, 1 + 4 * paths.length);
-        message.copy(buffer, 1 + 4 * paths.length + 4, offset, offset + chunkSize);
+        buffer[1 + 4 * paths.length] = signingType;
+        buffer.writeUInt32BE(message.length, 2 + 4 * paths.length);
+        message.copy(buffer, 2 + 4 * paths.length + 4, offset, offset + chunkSize);
       } else {
         message.copy(buffer, 0, offset, offset + chunkSize);
       }
@@ -92,7 +101,7 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signUserMessage(messageHex: string, hashed = true) {
-    return this.signMessage(undefined, messageHex, hashed);
+  async signUserMessage(messageHex: string, signingType = SigningType.MESSAGE, hashed = true) {
+    return this.signMessage(undefined, messageHex, signingType, hashed);
   }
 }
