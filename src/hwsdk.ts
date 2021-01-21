@@ -71,17 +71,17 @@ export class HWSDK {
     const data = [];
 
     while (offset !== message.length) {
-      const maxChunkSize = offset === 0 ? 150 - 2 - paths.length * 4 - 4 : 150;
+      const maxChunkSize = offset === 0 ? 150 - 1 - paths.length * 4 - 5 : 150;
       const chunkSize = offset + maxChunkSize > message.length ? message.length - offset : maxChunkSize;
-      const buffer = Buffer.alloc(offset === 0 ? 2 + paths.length * 4 + 4 + chunkSize : chunkSize);
+      const buffer = Buffer.alloc(offset === 0 ? 1 + paths.length * 4 + 5 + chunkSize : chunkSize);
       if (offset === 0) {
         buffer[0] = paths.length;
         paths.forEach((element, index) => {
           buffer.writeUInt32BE(element, 1 + 4 * index);
         });
         buffer[1 + 4 * paths.length] = signingType;
-        buffer.writeUInt32BE(message.length, 2 + 4 * paths.length);
-        message.copy(buffer, 2 + 4 * paths.length + 4, offset, offset + chunkSize);
+        buffer.writeUInt32BE(message.length, 1 + 4 * paths.length + 1);
+        message.copy(buffer, 1 + 4 * paths.length + 5, offset, offset + chunkSize);
       } else {
         message.copy(buffer, 0, offset, offset + chunkSize);
       }
