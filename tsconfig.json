@@ -13,7 +13,11 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "watch": false,
-    "typeRoots": ["node_modules/@types"]
+    "typeRoots": ["node_modules/@types"],
+    "baseUrl": ".",
+    "paths": {
+      "@ledgerhq/errors": ["node_modules/@ledgerhq/errors/dist/index"]
+    }
   },
   "include": ["./src/**/*"],
   "exclude": ["node_modules", "dist"]

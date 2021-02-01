@@ -1,5 +1,6 @@
 import bippath from 'bip32-path';
 import Transport from '@ledgerhq/hw-transport';
+import * as errors from './errors';
 
 const COTI_SCRAMBLE_KEY = 'COTI';
 
@@ -46,12 +47,14 @@ export class HWSDK {
     paths.forEach((element, pathIndex) => {
       buffer.writeUInt32BE(element, 1 + 4 * pathIndex);
     });
-
-    const response = await this.transport.send(CLA, INS_GET_PUBLIC_KEY, interactive ? P1_CONFIRM : P1_UNCONFIRM, 0x00, buffer);
-    const publicKeyLength = response[0];
-    const publicKey = response.slice(1, 1 + publicKeyLength).toString('hex');
-
-    return { publicKey };
+    try {
+      const response = await this.transport.send(CLA, INS_GET_PUBLIC_KEY, interactive ? P1_CONFIRM : P1_UNCONFIRM, 0x00, buffer);
+      const publicKeyLength = response[0];
+      const publicKey = response.slice(1, 1 + publicKeyLength).toString('hex');
+      return { publicKey };
+    } catch (e) {
+      throw errors.getError(e);
+    }
   }
 
   // Get COTI public key for a given BIP32 account index.
@@ -90,7 +93,11 @@ export class HWSDK {
     }
     let response;
     for (let i = 0; i < data.length; ++i) {
-      response = await this.transport.send(CLA, INS_SIGN_MESSAGE, i === 0 ? P1_FIRST : P1_MORE, hashed ? P2_HASHED : P2_NOT_HASHED, data[i]);
+      try {
+        response = await this.transport.send(CLA, INS_SIGN_MESSAGE, i === 0 ? P1_FIRST : P1_MORE, hashed ? P2_HASHED : P2_NOT_HASHED, data[i]);
+      } catch (e) {
+        throw errors.getError(e);
+      }
     }
     if (response === undefined) throw new Error(`Undefined sign message response`);
     const v = response[0];
