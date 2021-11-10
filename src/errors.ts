@@ -36,6 +36,9 @@ export function getError(error: Error) {
 
 export function getCustomAltStatusMessage(code: number) {
   switch (code) {
+    case 0x6511:
+    case 0x6700:
+      return 'Ledger application not running';
     case 0x6982:
       return 'Security status not satisfied';
     case 0x6983:
