@@ -1,6 +1,8 @@
 import { getAltStatusMessage } from '@ledgerhq/errors';
 
 export const CustomStatusCodes = {
+  APPLICATION_NOT_RUNNING_WEB: 0x6511,
+  APPLICATION_NOT_RUNNING_NODE: 0x6700,
   SECURITY_STATUS_NOT_SATISFIED: 0x6982,
   DEVICE_LOCKED: 0x6983,
   REJECTED_BY_USER: 0x6985,
