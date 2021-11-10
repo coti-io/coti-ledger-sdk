@@ -1,6 +1,6 @@
 {
   "name": "@coti-io/ledger-sdk",
-  "version": "1.1.0-beta.2",
+  "version": "1.1.0",
   "description": "COTI Ledger app SDK",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
