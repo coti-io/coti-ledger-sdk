@@ -63,15 +63,15 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signMessage(index: number | undefined, messageHex: string, signingType = SigningType.MESSAGE, hashed = true) {
+  async signMessage(index: number | undefined, messageInBytes: Uint8Array, signingType = SigningType.MESSAGE, hashed = true) {
     let path = BIP32_PATH;
     if (index !== undefined) {
       path = `${path}/${index}`;
     }
     const paths: number[] = bippath.fromString(path).toPathArray();
     let offset = 0;
-    const message = Buffer.from(messageHex, 'hex');
-    const data = [];
+    const message = Buffer.from(messageInBytes);
+    const data: Buffer[] = [];
 
     while (offset !== message.length) {
       const maxChunkSize = offset === 0 ? 150 - 1 - paths.length * 4 - 5 : 150;
@@ -84,7 +84,7 @@ export class HWSDK {
         });
         buffer[1 + 4 * paths.length] = signingType;
         buffer.writeUInt32BE(message.length, 1 + 4 * paths.length + 1);
-        message.copy(buffer, 1 + 4 * paths.length + 5, offset, offset + chunkSize);
+        message.copy(buffer, 1 + 4 * paths.length + 5, 0, chunkSize);
       } else {
         message.copy(buffer, 0, offset, offset + chunkSize);
       }
@@ -108,7 +108,7 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signUserMessage(messageHex: string, signingType = SigningType.MESSAGE, hashed = true) {
-    return this.signMessage(undefined, messageHex, signingType, hashed);
+  async signUserMessage(messageInBytes: Uint8Array, signingType = SigningType.MESSAGE, hashed = true) {
+    return this.signMessage(undefined, messageInBytes, signingType, hashed);
   }
 }
