@@ -26,6 +26,17 @@ export enum SigningType {
   TX,
 }
 
+export interface BaseTransactionSigningData {
+  amount: string;
+  address: string;
+}
+
+export interface TransactionSigningData {
+  amount: string;
+}
+
+export type SigningData = BaseTransactionSigningData | TransactionSigningData;
+
 export class HWSDK {
   readonly transport: Transport;
 
@@ -63,7 +74,13 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signMessage(index: number | undefined, messageInBytes: Uint8Array, signingType = SigningType.MESSAGE, hashed = true) {
+  async signMessage(
+    index: number | undefined,
+    messageInBytes: Uint8Array,
+    signingType = SigningType.MESSAGE,
+    hashed = true,
+    signingData?: SigningData
+  ) {
     let path = BIP32_PATH;
     if (index !== undefined) {
       path = `${path}/${index}`;
@@ -71,23 +88,79 @@ export class HWSDK {
     const paths: number[] = bippath.fromString(path).toPathArray();
     let offset = 0;
     const message = Buffer.from(messageInBytes);
-    const data: Buffer[] = [];
-
-    while (offset !== message.length) {
-      const maxChunkSize = offset === 0 ? 150 - 1 - paths.length * 4 - 5 : 150;
-      const chunkSize = offset + maxChunkSize > message.length ? message.length - offset : maxChunkSize;
-      const buffer = Buffer.alloc(offset === 0 ? 1 + paths.length * 4 + 5 + chunkSize : chunkSize);
-      if (offset === 0) {
-        buffer[0] = paths.length;
-        paths.forEach((element, index) => {
-          buffer.writeUInt32BE(element, 1 + 4 * index);
-        });
-        buffer[1 + 4 * paths.length] = signingType;
-        buffer.writeUInt32BE(message.length, 1 + 4 * paths.length + 1);
-        message.copy(buffer, 1 + 4 * paths.length + 5, 0, chunkSize);
-      } else {
-        message.copy(buffer, 0, offset, offset + chunkSize);
+    let amount: Buffer | undefined;
+    let address: Buffer | undefined;
+    if ([SigningType.BASE_TX, SigningType.TX].includes(signingType)) {
+      if (signingData === undefined) throw new Error('Missing signing data');
+      amount = Buffer.from(signingData.amount, 'utf-8');
+      if (SigningType.BASE_TX === signingType) {
+        if ('address' in signingData) {
+          address = Buffer.from(signingData.address, 'utf-8');
+        } else throw new Error('Missing address in signing data');
       }
+    }
+    const data: Buffer[] = [];
+    const pathLengthByteNumber = 1;
+    const pathParameterByteNumber = 4;
+    const signingTypeByteNumber = 1;
+    const messageLengthByteNumber = 4;
+    const amountLengthByteNumber = 4;
+    let minimalFirstRequestByteNumber =
+      pathLengthByteNumber + paths.length * pathParameterByteNumber + signingTypeByteNumber + messageLengthByteNumber;
+    if (amount != undefined) minimalFirstRequestByteNumber += amountLengthByteNumber;
+
+    let processedMessageLength = 0;
+    let processedAmountLength = 0;
+    let processedAddressLength = 0 ;
+    let firstRequest = true;
+    const amountLength = amount !== undefined ? amount.length : 0;
+    const addressLength = address !== undefined ? address.length : 0;
+    while (offset !== (message.length + amountLength + addressLength)) {
+      let bufferIndex = 0;
+      const maxChunkSize = firstRequest ? 150 - minimalFirstRequestByteNumber : 150;
+      
+      const messageChunkSize = Math.min(message.length - processedMessageLength, maxChunkSize);
+      const amountChunkSize = Math.min(amountLength - processedAmountLength, maxChunkSize - messageChunkSize);
+      const addressChunkSize = Math.min(addressLength - processedAddressLength, maxChunkSize - messageChunkSize - amountChunkSize);
+
+      const chunkSize = messageChunkSize + amountChunkSize + addressChunkSize;
+      const buffer = Buffer.alloc(firstRequest ? minimalFirstRequestByteNumber + chunkSize : chunkSize);
+      if (firstRequest) {
+        buffer[bufferIndex] = paths.length;
+        bufferIndex += pathLengthByteNumber;
+
+        paths.forEach((element, index) => {
+          buffer.writeUInt32BE(element, bufferIndex);
+          bufferIndex += pathParameterByteNumber;
+        });
+
+        buffer[bufferIndex] = signingType;
+        bufferIndex += signingTypeByteNumber;
+        
+        buffer.writeUInt32BE(message.length, bufferIndex);
+        bufferIndex += messageLengthByteNumber;
+
+        if(amount !== undefined) {
+          buffer.writeUInt32BE(amountLength, bufferIndex);
+          bufferIndex += amountLengthByteNumber;
+        }
+        firstRequest = false;
+      }
+      if(messageChunkSize !== 0) {
+        message.copy(buffer, bufferIndex, processedMessageLength, processedMessageLength + messageChunkSize);
+        processedMessageLength += messageChunkSize;
+        bufferIndex += messageChunkSize;
+      }
+      if(amount != undefined && amountChunkSize !== 0) {
+        amount.copy(buffer, bufferIndex, processedAmountLength, processedAmountLength + amountChunkSize);
+        processedAmountLength += amountChunkSize;
+        bufferIndex += amountChunkSize;
+      }
+      if(address != undefined && addressChunkSize !== 0) {
+        address.copy(buffer, bufferIndex, processedAddressLength, processedAddressLength + addressChunkSize);
+        processedAddressLength += addressChunkSize;
+      }  
+      
       data.push(buffer);
       offset += chunkSize;
     }
