@@ -107,18 +107,18 @@ export class HWSDK {
     const amountLengthByteNumber = 4;
     let minimalFirstRequestByteNumber =
       pathLengthByteNumber + paths.length * pathParameterByteNumber + signingTypeByteNumber + messageLengthByteNumber;
-    if (amount != undefined) minimalFirstRequestByteNumber += amountLengthByteNumber;
+    if (amount !== undefined) minimalFirstRequestByteNumber += amountLengthByteNumber;
 
     let processedMessageLength = 0;
     let processedAmountLength = 0;
-    let processedAddressLength = 0 ;
+    let processedAddressLength = 0;
     let firstRequest = true;
     const amountLength = amount !== undefined ? amount.length : 0;
     const addressLength = address !== undefined ? address.length : 0;
-    while (offset !== (message.length + amountLength + addressLength)) {
+    while (offset !== message.length + amountLength + addressLength) {
       let bufferIndex = 0;
       const maxChunkSize = firstRequest ? 150 - minimalFirstRequestByteNumber : 150;
-      
+
       const messageChunkSize = Math.min(message.length - processedMessageLength, maxChunkSize);
       const amountChunkSize = Math.min(amountLength - processedAmountLength, maxChunkSize - messageChunkSize);
       const addressChunkSize = Math.min(addressLength - processedAddressLength, maxChunkSize - messageChunkSize - amountChunkSize);
@@ -129,38 +129,38 @@ export class HWSDK {
         buffer[bufferIndex] = paths.length;
         bufferIndex += pathLengthByteNumber;
 
-        paths.forEach((element, index) => {
-          buffer.writeUInt32BE(element, bufferIndex);
+        paths.forEach((pathElement, pathIndex) => {
+          buffer.writeUInt32BE(pathElement, bufferIndex);
           bufferIndex += pathParameterByteNumber;
         });
 
         buffer[bufferIndex] = signingType;
         bufferIndex += signingTypeByteNumber;
-        
+
         buffer.writeUInt32BE(message.length, bufferIndex);
         bufferIndex += messageLengthByteNumber;
 
-        if(amount !== undefined) {
+        if (amount !== undefined) {
           buffer.writeUInt32BE(amountLength, bufferIndex);
           bufferIndex += amountLengthByteNumber;
         }
         firstRequest = false;
       }
-      if(messageChunkSize !== 0) {
+      if (messageChunkSize !== 0) {
         message.copy(buffer, bufferIndex, processedMessageLength, processedMessageLength + messageChunkSize);
         processedMessageLength += messageChunkSize;
         bufferIndex += messageChunkSize;
       }
-      if(amount != undefined && amountChunkSize !== 0) {
+      if (amount !== undefined && amountChunkSize !== 0) {
         amount.copy(buffer, bufferIndex, processedAmountLength, processedAmountLength + amountChunkSize);
         processedAmountLength += amountChunkSize;
         bufferIndex += amountChunkSize;
       }
-      if(address != undefined && addressChunkSize !== 0) {
+      if (address !== undefined && addressChunkSize !== 0) {
         address.copy(buffer, bufferIndex, processedAddressLength, processedAddressLength + addressChunkSize);
         processedAddressLength += addressChunkSize;
-      }  
-      
+      }
+
       data.push(buffer);
       offset += chunkSize;
     }
@@ -181,7 +181,7 @@ export class HWSDK {
   }
 
   // Signs a message and retrieves v, r, s given the raw transaction and the BIP32 path.
-  async signUserMessage(messageInBytes: Uint8Array, signingType = SigningType.MESSAGE, hashed = true) {
-    return this.signMessage(undefined, messageInBytes, signingType, hashed);
+  async signUserMessage(messageInBytes: Uint8Array, signingType = SigningType.MESSAGE, hashed = true, signingData?: SigningData) {
+    return this.signMessage(undefined, messageInBytes, signingType, hashed, signingData);
   }
 }
