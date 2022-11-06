@@ -59,6 +59,10 @@ export class HWSDK {
     paths.forEach((element, pathIndex) => {
       buffer.writeUInt32BE(element, 1 + 4 * pathIndex);
     });
+    return this.getPublicKeyFromApp(buffer, interactive);
+  }
+
+  async getPublicKeyFromApp(buffer: Buffer, interactive: boolean) {
     try {
       const response = await this.transport.send(CLA, INS_GET_PUBLIC_KEY, interactive ? P1_CONFIRM : P1_UNCONFIRM, 0x00, buffer);
       const publicKeyLength = response[0];
@@ -91,7 +95,6 @@ export class HWSDK {
     const message = Buffer.from(messageInBytes);
     let amount: Buffer | undefined;
     let address: Buffer | undefined;
-    let destinationAddress: Buffer | undefined;
 
     if ([SigningType.BASE_TX, SigningType.TX].includes(signingType)) {
       if (signingData === undefined) throw new Error('Missing signing data');
@@ -103,7 +106,7 @@ export class HWSDK {
       }
       if (SigningType.TX === signingType) {
         if ('destinationAddress' in signingData) {
-          destinationAddress = Buffer.from(signingData.destinationAddress, 'utf-8');
+          address = Buffer.from(signingData.destinationAddress, 'utf-8');
         } else throw new Error('Missing destination address in signing data');
       }
     }
@@ -120,24 +123,18 @@ export class HWSDK {
     let processedMessageLength = 0;
     let processedAmountLength = 0;
     let processedAddressLength = 0;
-    let processedDestinationAddressLength = 0;
     let firstRequest = true;
     const amountLength = amount !== undefined ? amount.length : 0;
     const addressLength = address !== undefined ? address.length : 0;
-    const destinationAddressLength = destinationAddress !== undefined ? destinationAddress.length : 0;
-    while (offset !== message.length + amountLength + addressLength + destinationAddressLength) {
+    while (offset !== message.length + amountLength + addressLength) {
       let bufferIndex = 0;
       const maxChunkSize = firstRequest ? 150 - minimalFirstRequestByteNumber : 150;
 
       const messageChunkSize = Math.min(message.length - processedMessageLength, maxChunkSize);
       const amountChunkSize = Math.min(amountLength - processedAmountLength, maxChunkSize - messageChunkSize);
       const addressChunkSize = Math.min(addressLength - processedAddressLength, maxChunkSize - messageChunkSize - amountChunkSize);
-      const destinationAddressChunkSize = Math.min(
-        destinationAddressLength - processedDestinationAddressLength,
-        maxChunkSize - messageChunkSize - amountChunkSize - addressLength
-      );
 
-      const chunkSize = messageChunkSize + amountChunkSize + addressChunkSize + destinationAddressChunkSize;
+      const chunkSize = messageChunkSize + amountChunkSize + addressChunkSize;
       const buffer = Buffer.alloc(firstRequest ? minimalFirstRequestByteNumber + chunkSize : chunkSize);
       if (firstRequest) {
         buffer[bufferIndex] = paths.length;
@@ -174,19 +171,14 @@ export class HWSDK {
         address.copy(buffer, bufferIndex, processedAddressLength, processedAddressLength + addressChunkSize);
         processedAddressLength += addressChunkSize;
       }
-      if (destinationAddress !== undefined && destinationAddressChunkSize !== 0) {
-        destinationAddress.copy(
-          buffer,
-          bufferIndex,
-          processedDestinationAddressLength,
-          processedDestinationAddressLength + destinationAddressChunkSize
-        );
-        processedDestinationAddressLength += destinationAddressChunkSize;
-      }
 
       data.push(buffer);
       offset += chunkSize;
     }
+    return this.getSignatureFromApp(data, hashed);
+  }
+
+  async getSignatureFromApp(data: Buffer[], hashed: boolean) {
     let response;
     for (let i = 0; i < data.length; ++i) {
       try {
