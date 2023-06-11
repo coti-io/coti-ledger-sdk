@@ -1,6 +1,7 @@
 import { getAltStatusMessage } from '@ledgerhq/errors';
 
 export const CustomStatusCodes = {
+  APPLICATION_NOT_RUNNING_WEB_SIGN: 0x650f,
   APPLICATION_NOT_RUNNING_WEB: 0x6511,
   APPLICATION_NOT_RUNNING_NODE: 0x6700,
   SECURITY_STATUS_NOT_SATISFIED: 0x6982,
@@ -38,6 +39,7 @@ export function getError(error: Error) {
 
 export function getCustomAltStatusMessage(code: number) {
   switch (code) {
+    case 0x650f:
     case 0x6511:
     case 0x6700:
       return 'Ledger application not running';
